@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Traffic Signal Control</title>
+<style>
+:root{
+  --bg:#101827;--panel:#1d2b46;--panel2:#263e65;--line:#5276a5;
+  --text:#f5f7ff;--muted:#b9cbe4;--mint:#83e5d0;--blue:#75a9ed;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;padding:26px;font-family:Arial,Helvetica,sans-serif;color:var(--text);
+  background:radial-gradient(circle at top left,#2b4267,#101827 62%);
+}
+.wrapper{max-width:1450px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:25px}
+.brand{display:flex;align-items:center;gap:15px}
+.logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#54d9dc,#587df1);display:grid;place-items:center;font-size:28px}
+h1{font-size:29px;margin:0 0 7px}
+.subtitle{color:var(--muted);font-size:14px}
+.prototype{font-size:13px;color:var(--mint);white-space:nowrap}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mint);margin-right:8px}
+.main{display:grid;grid-template-columns:1.18fr 1fr;gap:20px;align-items:stretch}
+.panel,.status-panel{
+  background:linear-gradient(145deg,rgba(45,69,108,.97),rgba(27,43,70,.98));
+  border:1px solid rgba(133,168,213,.28);border-radius:23px;padding:23px;
+  box-shadow:0 15px 38px #0003;
+}
+h2{font-size:20px;margin:0 0 8px}
+.description{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 20px}
+.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.direction-card{background:rgba(78,117,174,.25);border:1px solid #557cab;border-radius:17px;padding:15px}
+.direction-head{display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:11px}
+.direction-badge{width:29px;height:29px;border-radius:9px;background:#4d85cb;display:grid;place-items:center}
+.direction-card label{display:block;color:var(--muted);font-size:13px;margin-bottom:8px}
+.direction-card input{width:100%;padding:12px;background:#14233b;color:white;border:1px solid #6485ad;border-radius:10px;font-size:16px;font-weight:bold;outline:none}
+.direction-card input:focus{border-color:var(--mint);box-shadow:0 0 0 2px #83e5d033}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 21px}
+button{border:0;border-radius:11px;padding:13px 17px;font-size:14px;font-weight:bold;cursor:pointer;transition:.2s}
+button:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.primary{background:var(--mint);color:#102b36}
+.secondary{background:#779ac8;color:white}
+.reset{background:#9aafd0;color:#172943}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.stat{background:#14243b66;border:1px solid #5878a0;border-radius:15px;padding:14px}
+.stat small{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}
+.stat strong{font-size:19px}
+.notice{margin-top:12px;min-height:17px;color:#ffe09b;font-size:12px}
+
+/* Intersection drawing */
+.intersection{height:320px;position:relative;overflow:hidden;border:1px solid #52729b;border-radius:18px;background:#111d30;margin-top:10px}
+.road-horizontal,.road-vertical{position:absolute;background:#83a7d2}
+.road-horizontal{left:8%;right:8%;top:37%;height:44%}
+.road-vertical{top:0;bottom:0;left:38%;width:25%}
+.lane{position:absolute;border-top:2px dashed #ffffff99;z-index:1}
+.lane.h1{top:49%;left:8%;right:8%}.lane.h2{top:64%;left:8%;right:8%}
+.vlane{position:absolute;top:0;bottom:0;border-left:2px dashed #ffffff99;z-index:1}
+.vlane.v1{left:46%}.vlane.v2{left:55%}
+.direction-name{position:absolute;font-size:12px;font-weight:bold;z-index:2}
+.north{top:5%;left:46%}.east{top:27%;right:9%}.west{bottom:22%;left:9%}.south{bottom:5%;right:29%}
+.traffic-light{position:absolute;z-index:3;display:flex;gap:5px;align-items:center;padding:5px 7px;background:#101a2b;border:2px solid #a5b9d6;border-radius:22px}
+.traffic-light.vertical{flex-direction:column;border-radius:19px}
+.light{width:15px;height:15px;border-radius:50%;background:#40536d;border:1px solid #a1b4ce}
+.light.red.active{background:#ff8296;box-shadow:0 0 10px #ff8296}
+.light.yellow.active{background:#ffd36d;box-shadow:0 0 10px #ffd36d}
+.light.green.active{background:#8ce9c9;box-shadow:0 0 10px #8ce9c9}
+.light-north{top:18%;left:17%}.light-east{top:9%;right:26%}
+.light-west{bottom:12%;left:31%}.light-south{bottom:19%;right:15%}
+.vehicle-label{position:absolute;z-index:4;background:#17243b;color:white;padding:5px 8px;border-radius:7px;font-size:11px;font-weight:bold}
+.vnorth{top:29%;left:47%}.veast{top:57%;right:20%}.vwest{top:56%;left:21%}.vsouth{bottom:29%;left:47%}
+.highest{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#527da933;border:1px solid #668bb7;border-radius:15px;padding:15px;margin-top:15px}
+.highest small{display:block;color:var(--muted);margin-bottom:6px}
+.highest strong{font-size:16px}
+.fixed{background:#356c70;color:#a0f2dc;border-radius:20px;padding:8px 12px;font-size:12px;font-weight:bold;white-space:nowrap}
+
+/* Signal status table */
+.status-panel{margin-top:20px;padding:22px 24px}
+.status-panel h2{margin-bottom:8px}
+.status-intro{color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 17px}
+.table-wrap{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:650px;text-align:left}
+th{color:#c6d8f1;font-size:13px;font-weight:bold;padding:13px 12px;border-bottom:1px solid #55749a}
+td{padding:14px 12px;border-bottom:1px solid #ffffff20;font-size:14px}
+tbody tr:last-child td{border-bottom:0}
+.cycle{color:#83e5d0;font-weight:bold;white-space:nowrap;font-size:13px}
+.level{font-weight:bold}
+.level.low{color:#9ce8d2}.level.medium{color:#ffd782}.level.high{color:#ff9a9a}
+.footer-note{color:#a9bedb;font-size:12px;text-align:right;margin:18px 2px 0}
+@media(max-width:900px){body{padding:16px}.main{grid-template-columns:1fr}h1{font-size:24px}}
+@media(max-width:520px){
+  .input-grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr}
+  header{align-items:flex-start;flex-direction:column}.panel{padding:16px}
+  .intersection{height:270px}.footer-note{text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="brand">
+      <div class="logo">🚦</div>
+      <div>
+        <h1>Smart Traffic Signal Control</h1>
+        <div class="subtitle">Automated Traffic Signal Control &amp; Simulation System</div>
+      </div>
+    </div>
+    <div class="prototype"><span class="dot"></span>Prototype - Adaptive signal timing</div>
+  </header>
+
+  <main class="main">
+    <section class="panel">
+      <h2>Traffic Input</h2>
+      <p class="description">Enter the number of waiting vehicles approaching the four-way intersection.</p>
+      <div class="input-grid">
+        <div class="direction-card">
+          <div class="direction-head">North <span class="direction-badge">N</span></div>
+          <label for="north">Vehicle count</label><input id="north" type="number" min="0" step="1" value="1">
+        </div>
+        <div class="direction-card">
+          <div class="direction-head">South <span class="direction-badge">S</span></div>
+          <label for="south">Vehicle count</label><input id="south" type="number" min="0" step="1" value="2">
+        </div>
+        <div class="direction-card">
+          <div class="direction-head">East <span class="direction-badge">E</span></div>
+          <label for="east">Vehicle count</label><input id="east" type="number" min="0" step="1" value="4">
+        </div>
+        <div class="direction-card">
+          <div class="direction-head">West <span class="direction-badge">W</span></div>
+          <label for="west">Vehicle count</label><input id="west" type="number" min="0" step="1" value="3">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" onclick="analyzeTraffic()">Analyze traffic</button>
+        <button class="secondary" onclick="loadSample()">Load sample data</button>
+        <button class="reset" onclick="resetData()">Reset</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><small>Total vehicles</small><strong id="total">10</strong></div>
+        <div class="stat"><small>Busiest direction</small><strong id="busiest">East</strong></div>
+        <div class="stat"><small>Signal duration</small><strong id="duration">2 sec</strong></div>
+      </div>
+      <div class="notice" id="notice" aria-live="polite">Traffic analysis completed successfully.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Intersection Simulation</h2>
+      <p class="description">A visual representation of the four directions and their signal states.</p>
+      <div class="intersection">
+        <div class="road-horizontal"></div><div class="road-vertical"></div>
+        <div class="lane h1"></div><div class="lane h2"></div>
+        <div class="vlane v1"></div><div class="vlane v2"></div>
+        <span class="direction-name north">NORTH</span>
+        <span class="direction-name east">EAST</span>
+        <span class="direction-name west">WEST</span>
+        <span class="direction-name south">SOUTH</span>
+
+        <div class="traffic-light light-north" id="signal-north"><i class="light red active"></i><i class="light yellow"></i><i class="light green"></i></div>
+        <div class="traffic-light vertical light-east" id="signal-east"><i class="light red active"></i><i class="light yellow"></i><i class="light green"></i></div>
+        <div class="traffic-light vertical light-west" id="signal-west"><i class="light red active"></i><i class="light yellow"></i><i class="light green"></i></div>
+        <div class="traffic-light light-south" id="signal-south"><i class="light red active"></i><i class="light yellow"></i><i class="light green"></i></div>
+
+        <span class="vehicle-label vnorth" id="count-north">1 vehicles</span>
+        <span class="vehicle-label veast" id="count-east">4 vehicles</span>
+        <span class="vehicle-label vwest" id="count-west">3 vehicles</span>
+        <span class="vehicle-label vsouth" id="count-south">2 vehicles</span>
+      </div>
+      <div class="highest">
+        <div><small>Highest traffic count</small><strong id="highest">East - 4 vehicles</strong></div>
+        <span class="fixed">Adaptive timing</span>
+      </div>
+    </section>
+  </main>
+
+  <section class="status-panel">
+    <h2>Signal Status</h2>
+    <p class="status-intro" id="statusIntro">
+      Green duration is calculated as half the vehicle count for each direction. Yellow remains 5 seconds, then the signal turns red while other directions are served.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Direction</th>
+            <th>Vehicles</th>
+            <th>Traffic level</th>
+            <th>Signal cycle</th>
+          </tr>
+        </thead>
+        <tbody id="signalTable">
+          <tr><td>North</td><td>1</td><td><span class="level low">Low</span></td><td class="cycle">Green 0.5s → Yellow 5s → Red</td></tr>
+          <tr><td>South</td><td>2</td><td><span class="level low">Low</span></td><td class="cycle">Green 1s → Yellow 5s → Red</td></tr>
+          <tr><td>East</td><td>4</td><td><span class="level low">Low</span></td><td class="cycle">Green 2s → Yellow 5s → Red</td></tr>
+          <tr><td>West</td><td>3</td><td><span class="level low">Low</span></td><td class="cycle">Green 1.5s → Yellow 5s → Red</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footer-note">Academic project prototype · Demo only — not connected to real traffic signals</div>
+  </section>
+</div>
+
+<script>
+const directions = ["north","south","east","west"];
+const names = {north:"North",south:"South",east:"East",west:"West"};
+const sampleData = {north:20,south:10,east:35,west:15};
+
+function getCounts(){
+  const counts={};
+  for(const d of directions){
+    const input=document.getElementById(d);
+    const value=Number(input.value);
+    if(input.value.trim()==="" || !Number.isInteger(value) || value<0){
+      throw new Error("Please enter a valid non-negative whole number for every direction.");
+    }
+    counts[d]=value;
+  }
+  return counts;
+}
+
+function greenSeconds(vehicleCount){
+  // Green signal duration = half of the vehicle count.
+  return vehicleCount/2;
+}
+
+function formatSeconds(seconds){
+  return Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1);
+}
+
+function trafficLevel(count){
+  if(count<=20) return {name:"Low",className:"low"};
+  if(count<=50) return {name:"Medium",className:"medium"};
+  return {name:"High",className:"high"};
+}
+
+function setSignal(direction,state){
+  const signal=document.getElementById("signal-"+direction);
+  signal.querySelectorAll(".light").forEach(light=>light.classList.remove("active"));
+  signal.querySelector(".light."+state).classList.add("active");
+}
+
+function renderTable(counts){
+  const tbody=document.getElementById("signalTable");
+  tbody.innerHTML="";
+  for(const d of directions){
+    const count=counts[d];
+    const level=trafficLevel(count);
+    const green=formatSeconds(greenSeconds(count));
+    const row=document.createElement("tr");
+    row.innerHTML=`
+      <td>${names[d]}</td>
+      <td>${count}</td>
+      <td><span class="level ${level.className}">${level.name}</span></td>
+      <td class="cycle">Green ${green}s → Yellow 5s → Red</td>
+    `;
+    tbody.appendChild(row);
+  }
+}
+
+function analyzeTraffic(){
+  let counts;
+  try{counts=getCounts();}
+  catch(error){document.getElementById("notice").textContent=error.message;return;}
+
+  const total=Object.values(counts).reduce((sum,n)=>sum+n,0);
+  const busiest=directions.reduce((best,d)=>counts[d]>counts[best]?d:best,directions[0]);
+  const duration=greenSeconds(counts[busiest]);
+
+  document.getElementById("total").textContent=total;
+  document.getElementById("busiest").textContent=names[busiest];
+  document.getElementById("duration").textContent=formatSeconds(duration)+" sec";
+  document.getElementById("highest").textContent=names[busiest]+" - "+counts[busiest]+" vehicles";
+
+  for(const d of directions){
+    document.getElementById("count-"+d).textContent=counts[d]+" vehicles";
+    setSignal(d,counts[d]===0?"red":(d===busiest?"green":"red"));
+  }
+
+  renderTable(counts);
+  document.getElementById("statusIntro").textContent=
+    "Green duration = half the vehicle count for each direction. Yellow remains 5 seconds, then Red while other directions are served. The busiest direction is "+names[busiest]+".";
+  document.getElementById("notice").textContent="Traffic analysis completed successfully.";
+}
+S
+function loadSample(){
+  for(const d of directions) document.getElementById(d).value=sampleData[d];
+  analyzeTraffic();
+}
+
+function resetData(){
+  for(const d of directions) document.getElementById(d).value=0;
+  analyzeTraffic();
+  document.getElementById("notice").textContent="All values have been reset.";
+}
+
+analyzeTraffic();
+</script>
+</body>
+</html>
